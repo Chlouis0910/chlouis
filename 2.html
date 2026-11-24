@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="亿航 EH216-S 无人驾驶载人 eVTOL 深度安全分析：基于系统安全工程的适航基线、危险分析、安全论证、运行风险与改进建议。" />
+  <title>EHang EH216-S | 深度安全分析</title>
+  <script>document.documentElement.classList.add('js');</script>
+  <style>
+    :root {
+      --ink: #0d1b2f;
+      --ink-soft: #2d3f5c;
+      --muted: #6b7b93;
+      --paper: #f5f7fb;
+      --white: #ffffff;
+      --line: #dfe6f0;
+      --blue: #1f5eff;
+      --blue-deep: #123b8f;
+      --cyan: #20bfd0;
+      --amber: #f0a13a;
+      --green: #1aa87a;
+      --red: #d9536b;
+      --shadow: 0 18px 48px rgba(18, 48, 92, 0.09);
+      --shadow-lg: 0 28px 80px rgba(10, 32, 70, 0.16);
+      --radius: 22px;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    sup a { color: var(--blue); text-decoration: none; font-size: 11px; }
+    sup a:hover { text-decoration: underline; }
+    .wrap { width: min(var(--max), calc(100% - 48px)); margin: 0 auto; }
+
+    /* Header */
+    .site-header {
+      position: fixed; inset: 0 0 auto 0; z-index: 100;
+      background: rgba(7, 22, 46, 0.82);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .header-inner {
+      width: min(var(--max), calc(100% - 48px)); margin: 0 auto;
+      height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; }
+    .brand-mark {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      display: grid; place-items: center; font-weight: 800; font-size: 13px; letter-spacing: -0.4px;
+    }
+    .brand-text strong { display: block; font-size: 14px; line-height: 1.2; }
+    .brand-text small { display: block; font-size: 10px; letter-spacing: 2px; color: #9fb4d4; margin-top: 3px; }
+    .nav { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav a {
+      color: #c7d5ea; text-decoration: none; font-size: 13px; padding: 8px 11px; border-radius: 8px; white-space: nowrap;
+      transition: color .2s, background .2s;
+    }
+    .nav a:hover { color: #fff; background: rgba(255,255,255,.09); }
+    .nav a.prev { color: #7de8f3; border: 1px solid rgba(125,232,243,.3); margin-left: 8px; }
+
+    /* Hero */
+    .hero {
+      position: relative; overflow: hidden; color: #fff; padding: 150px 0 88px;
+      background:
+        radial-gradient(circle at 78% 30%, rgba(32,191,208,.22), transparent 34%),
+        radial-gradient(circle at 12% 82%, rgba(31,94,255,.25), transparent 38%),
+        linear-gradient(135deg, #06152d 0%, #0b2c50 55%, #071b36 100%);
+    }
+    .hero::before {
+      content: ""; position: absolute; inset: 0; opacity: .18; pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.14) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: linear-gradient(to bottom, #000, transparent 88%);
+    }
+    .hero-grid { position: relative; display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: 2.6px;
+      color: #8fe6ee; text-transform: uppercase; font-weight: 700;
+    }
+    .eyebrow::before { content: ""; width: 28px; height: 2px; background: var(--cyan); }
+    .hero h1 { font-size: clamp(40px, 5.6vw, 74px); line-height: 1.06; margin: 20px 0 22px; letter-spacing: -2px; font-weight: 800; }
+    .hero h1 span { background: linear-gradient(90deg, #7de8f3, #91b6ff); -webkit-background-clip: text; color: transparent; }
+    .hero-lead { font-size: 17px; color: #c8d8ee; max-width: 640px; margin: 0 0 30px; }
+    .hero-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 34px; }
+    .hero-tag {
+      font-size: 12px; padding: 8px 13px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px;
+      background: rgba(255,255,255,.06); color: #dce9fa;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 9px; padding: 13px 20px; border-radius: 12px;
+      text-decoration: none; font-size: 14px; font-weight: 700; transition: transform .2s, box-shadow .2s, background .2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: linear-gradient(135deg, var(--cyan), var(--blue)); color: #fff; box-shadow: 0 12px 30px rgba(31,94,255,.3); }
+    .btn-ghost { border: 1px solid rgba(255,255,255,.28); color: #fff; background: rgba(255,255,255,.04); }
+    .hero-visual { position: relative; min-height: 430px; display: grid; place-items: center; }
+    .radar { width: min(100%, 470px); aspect-ratio: 1; position: relative; }
+    .radar svg { width: 100%; height: 100%; overflow: visible; }
+    .radar-ring { fill: none; stroke: rgba(137,206,255,.22); stroke-width: 1; }
+    .radar-ring.dashed { stroke-dasharray: 5 8; }
+    .radar-sweep { transform-origin: 240px 240px; animation: sweep 9s linear infinite; }
+    @keyframes sweep { to { transform: rotate(360deg); } }
+    .rotor { transform-origin: center; animation: spin 7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .float-label {
+      position: absolute; padding: 9px 13px; border-radius: 11px; font-size: 11px; letter-spacing: .5px;
+      background: rgba(8, 26, 52, .78); border: 1px solid rgba(125,214,239,.28); color: #cfeaff;
+      backdrop-filter: blur(8px);
+    }
+    .float-label b { color: #7de8f3; font-size: 14px; }
+    .fl-1 { top: 8%; right: 2%; }
+    .fl-2 { bottom: 14%; left: -3%; }
+    .fl-3 { bottom: 2%; right: 12%; }
+
+    .hero-stats {
+      position: relative; margin-top: 62px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    }
+    .hero-stat {
+      padding: 20px 22px; border-radius: 16px; background: rgba(255,255,255,.065);
+      border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(10px);
+    }
+    .hero-stat .num { font-size: 28px; font-weight: 800; letter-spacing: -1px; color: #fff; }
+    .hero-stat .num small { font-size: 13px; font-weight: 600; color: #9ddbe8; margin-left: 3px; }
+    .hero-stat .lbl { font-size: 12px; color: #a9bdd7; margin-top: 4px; }
+
+    /* Sections */
+    section { padding: 92px 0; }
+    .section-head { margin-bottom: 42px; max-width: 780px; }
+    .section-no { font-size: 11px; letter-spacing: 3px; color: var(--blue); font-weight: 800; }
+    .section-head h2 { font-size: clamp(30px, 4vw, 46px); line-height: 1.2; margin: 10px 0 14px; letter-spacing: -1px; }
+    .section-head p { color: var(--muted); font-size: 15px; margin: 0; }
+    .card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+    /* Findings */
+    .findings { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .finding { padding: 26px 24px 24px; position: relative; overflow: hidden; }
+    .finding::after { content: ""; position: absolute; width: 90px; height: 90px; border-radius: 50%; right: -38px; top: -38px; background: rgba(31,94,255,.07); }
+    .finding .idx { font-size: 11px; letter-spacing: 2px; color: var(--blue); font-weight: 800; }
+    .finding h3 { font-size: 17px; margin: 12px 0 10px; }
+    .finding p { font-size: 13px; color: var(--muted); margin: 0; }
+    .finding .verdict { margin-top: 16px; font-size: 12px; font-weight: 700; color: var(--ink-soft); display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(26,168,122,.12); }
+    .dot.warn { background: var(--amber); box-shadow: 0 0 0 4px rgba(240,161,58,.14); }
+    .dot.risk { background: var(--red); box-shadow: 0 0 0 4px rgba(217,83,107,.13); }
+
+    /* GSN */
+    .gsn { display: grid; gap: 18px; }
+    .gsn-goal { padding: 24px 28px; border-radius: 18px; background: linear-gradient(135deg, #0b2142, #123d76); color: #fff; box-shadow: var(--shadow-lg); }
+    .gsn-goal .eyebrow { color: #8fe6ee; }
+    .gsn-goal h3 { margin: 10px 0 6px; font-size: 20px; }
+    .gsn-goal p { margin: 0; color: #c6d7ee; font-size: 13px; }
+    .gsn-branches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .branch { padding: 22px; position: relative; }
+    .branch::before { content: ""; position: absolute; left: 50%; top: -18px; width: 1px; height: 18px; background: #b9cde8; }
+    .branch .bno { font-size: 10px; letter-spacing: 2px; color: var(--blue); font-weight: 800; }
+    .branch h4 { margin: 8px 0 8px; font-size: 15px; }
+    .branch p { margin: 0; font-size: 12.5px; color: var(--muted); }
+    .branch .ev { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 11.5px; color: var(--ink-soft); }
+    .branch .ev b { color: var(--blue); }
+
+    /* Baseline */
+    .baseline-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .baseline-card { padding: 28px; }
+    .baseline-card h3 { margin: 0 0 8px; font-size: 19px; }
+    .baseline-card > p { margin: 0 0 22px; font-size: 12.5px; color: var(--muted); }
+    .compare-rows { display: grid; gap: 12px; }
+    .compare-row { display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: start; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .compare-row:last-child { border-bottom: 0; }
+    .compare-row .k { font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+    .compare-row .v { font-size: 12.5px; color: var(--muted); }
+    .big-metric { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+    .big-metric strong { font-size: 38px; letter-spacing: -2px; color: var(--blue); }
+    .big-metric span { font-size: 12px; color: var(--muted); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .pill { display: inline-block; padding: 5px 9px; border-radius: 7px; font-size: 10.5px; font-weight: 700; background: #eaf1ff; color: #2450b8; }
+    .pill.green { background: #e7f7f1; color: #12805d; }
+    .pill.amber { background: #fff4e2; color: #9c6718; }
+
+    /* Hazard table */
+    .hazard-card { padding: 28px; overflow-x: auto; }
+    .hazard-card h3 { margin: 0 0 6px; font-size: 19px; }
+    .hazard-card > p { margin: 0 0 20px; font-size: 12.5px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 760px; }
+    th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: 10px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; background: #f8fafd; }
+    td strong { font-size: 12.5px; }
+    .level { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; }
+    .level.low { background: #e7f7f1; color: #12805d; }
+    .level.mid { background: #fff4e2; color: #9c6718; }
+    .level.high { background: #fdecef; color: #a8324a; }
+
+    /* Matrix */
+    .matrix-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .matrix-card { padding: 28px; }
+    .matrix-card h3 { margin: 0 0 6px; font-size: 19px; }
+    .matrix-card > p { margin: 0 0 20px; font-size: 12.5px; color: var(--muted); }
+    .matrix { display: grid; grid-template-columns: 64px repeat(5, 1fr); gap: 5px; }
+    .matrix .axis { font-size: 10px; color: var(--muted); display: grid; place-items: center; text-align: center; }
+    .cell { aspect-ratio: 1.55; border-radius: 8px; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #425573; }
+    .cell.low { background: #e7f7f1; }
+    .cell.mid { background: #fff2d9; }
+    .cell.high { background: #fdecef; }
+    .matrix-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; font-size: 11px; color: var(--muted); }
+    .matrix-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+    .matrix-list { display: grid; gap: 10px; }
+    .risk-item { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: #fbfdff; }
+    .risk-item strong { display: block; font-size: 13px; }
+    .risk-item span { font-size: 11.5px; color: var(--muted); }
+
+    /* Process */
+    .process-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .step { padding: 22px; position: relative; }
+    .step .n { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #eaf1ff; color: var(--blue); font-weight: 800; font-size: 13px; margin-bottom: 12px; }
+    .step h4 { margin: 0 0 8px; font-size: 14px; }
+    .step p { margin: 0; font-size: 12px; color: var(--muted); }
+    .step .tag { margin-top: 12px; font-size: 10.5px; color: var(--blue); font-weight: 700; }
+    .method-strip { margin-top: 18px; padding: 20px 24px; border-radius: 16px; background: #eef3fb; font-size: 12px; color: var(--ink-soft); }
+    .method-strip b { color: var(--blue); }
+
+    /* Timeline */
+    .timeline { position: relative; margin-left: 8px; }
+    .timeline::before { content: ""; position: absolute; left: 9px; top: 8px; bottom: 8px; width: 2px; background: linear-gradient(var(--blue), var(--cyan)); opacity: .35; }
+    .tl-item { position: relative; padding-left: 42px; padding-bottom: 26px; }
+    .tl-item::before { content: ""; position: absolute; left: 2px; top: 8px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 4px solid var(--blue); box-shadow: 0 0 0 5px rgba(31,94,255,.1); }
+    .tl-item.accent::before { border-color: var(--amber); box-shadow: 0 0 0 5px rgba(240,161,58,.13); }
+    .tl-date { font-size: 11px; letter-spacing: 1.5px; font-weight: 800; color: var(--blue); }
+    .tl-body { margin-top: 8px; padding: 20px 22px; border-radius: 16px; background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(20,52,96,.05); }
+    .tl-body h3 { margin: 0 0 6px; font-size: 16px; }
+    .tl-body p { margin: 0; font-size: 13px; color: var(--muted); }
+
+    /* Evidence / recs */
+    .evidence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .evidence-card { padding: 28px; }
+    .evidence-card h3 { margin: 0 0 14px; font-size: 18px; }
+    .evidence-card ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
+    .evidence-card li { margin-bottom: 9px; }
+    .evidence-card.known h3 { color: var(--green); }
+    .evidence-card.unknown h3 { color: var(--amber); }
+    .rec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; }
+    .rec { padding: 22px; }
+    .rec .rn { font-size: 11px; letter-spacing: 2px; color: var(--blue); font-weight: 800; }
+    .rec h4 { margin: 8px 0 8px; font-size: 14px; }
+    .rec p { margin: 0; font-size: 12px; color: var(--muted); }
+
+    /* Verdict */
+    .verdict-block { padding: 40px; background: linear-gradient(135deg, #0b2142, #123d76); color: #fff; border: 0; box-shadow: var(--shadow-lg); }
+    .verdict-block .eyebrow { color: #8fe6ee; }
+    .verdict-block h2 { font-size: clamp(28px, 3.6vw, 42px); line-height: 1.25; margin: 16px 0 14px; letter-spacing: -1px; }
+    .verdict-block > p { color: #c6d7ee; max-width: 860px; font-size: 14px; margin: 0; }
+    .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 34px; }
+    .score { padding: 20px; border-radius: 15px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); }
+    .score .head { display: flex; justify-content: space-between; font-size: 12px; color: #cfe0f6; }
+    .score .head b { color: #7de8f3; font-size: 15px; }
+    .bar { height: 6px; border-radius: 999px; background: #edf1f7; overflow: hidden; }
+    .score .bar { background: rgba(255,255,255,.14); margin-top: 12px; }
+    .score .bar i, .bar i { display: block; height: 100%; border-radius: inherit; }
+    .score .bar i { background: linear-gradient(90deg, var(--cyan), #7de8f3); }
+
+    /* Sources */
+    .sources { padding-top: 20px; }
+    .source-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px; counter-reset: src; padding: 0; list-style: none; }
+    .source-list li { position: relative; padding: 10px 0 10px 34px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+    .source-list li::before { counter-increment: src; content: "[" counter(src) "]"; position: absolute; left: 0; color: var(--blue); font-weight: 800; font-size: 11px; }
+    .source-list a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid #b9cbe6; word-break: break-all; }
+    .source-list a:hover { color: var(--blue); }
+    .disclaimer { margin-top: 26px; padding: 18px 20px; background: #eef3fb; border-radius: 14px; font-size: 12px; color: var(--ink-soft); }
+
+    footer { background: #08172e; color: #8fa5c2; padding: 28px 0; font-size: 12px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+
+    .top-btn {
+      position: fixed; right: 22px; bottom: 22px; z-index: 90; width: 42px; height: 42px; border-radius: 12px;
+      background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--blue);
+      display: grid; place-items: center; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+    }
+    .top-btn.show { opacity: 1; pointer-events: auto; }
+    .top-btn:hover { transform: translateY(-3px); }
+
+    .js .reveal { opacity: 0; transform: translateY(20px); transition: opacity .7s ease, transform .7s ease; }
+    .js .reveal.in { opacity: 1; transform: none; }
+
+    @media (max-width: 980px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 10px; }
+      .hero-visual { min-height: 360px; }
+      .hero-stats { grid-template-columns: repeat(2, 1fr); }
+      .findings, .gsn-branches, .process-grid, .rec-grid, .score-grid { grid-template-columns: repeat(2, 1fr); }
+      .baseline-grid, .matrix-grid, .evidence-grid { grid-template-columns: 1fr; }
+      .source-list { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .wrap, .header-inner { width: calc(100% - 32px); }
+      .site-header { position: static; }
+      .nav { padding-bottom: 10px; }
+      .hero { padding: 56px 0 62px; }
+      .hero h1 { font-size: 40px; letter-spacing: -1px; }
+      .hero-stats { margin-top: 38px; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .hero-stat { padding: 15px; }
+      .hero-stat .num { font-size: 22px; }
+      section { padding: 64px 0; }
+      .findings, .gsn-branches, .process-grid, .rec-grid, .score-grid { grid-template-columns: 1fr; }
+      .verdict-block { padding: 28px 22px; }
+      .float-label { font-size: 9px; padding: 6px 9px; }
+      .fl-2 { left: 0; }
+      .matrix { grid-template-columns: 48px repeat(5, 1fr); gap: 3px; }
+      .cell { font-size: 8px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .radar-sweep, .rotor { animation: none; }
+      .js .reveal { opacity: 1; transform: none; transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark">SFE</span>
+        <span class="brand-text"><strong>EH216-S 深度安全分析</strong><small>ASSIGNMENT 2 · SYSTEM SAFETY ENGINEERING</small></span>
+      </a>
+      <nav class="nav" aria-label="页面导航">
+        <a href="#summary">核心结论</a>
+        <a href="#safetycase">安全论证</a>
+        <a href="#baseline">适航基线</a>
+        <a href="#hazard">危险分析</a>
+        <a href="#process">工程方法</a>
+        <a href="#operation">运行风险</a>
+        <a href="#recommend">改进建议</a>
+        <a href="#sources">数据来源</a>
+        <a class="prev" href="assignment1.html">作业1</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow">课程作业 2 · 飞行汽车技术基础</div>
+          <h1>EH216-S <span>深度安全分析</span></h1>
+          <p class="hero-lead">以系统安全工程为框架，审视亿航 EH216-S 无人驾驶载人 eVTOL 的设计冗余、适航验证、制造一致性、运行控制与残余风险：安全不是一项证书，而是一条必须由证据持续支撑的论证链。</p>
+          <div class="hero-tags">
+            <span class="hero-tag">系统安全工程 SSE</span>
+            <span class="hero-tag">故障树 / 危害分析 / 安全论证</span>
+            <span class="hero-tag">数据截至 2026-11-23</span>
+          </div>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#safetycase">查看安全论证链 →</a>
+            <a class="btn btn-ghost" href="assignment1.html">返回第一次作业</a>
+          </div>
+        </div>
+        <div class="hero-visual" aria-label="EH216-S 安全冗余构型示意图">
+          <div class="radar">
+            <svg viewBox="0 0 480 480" role="img" aria-label="EH216-S 八支臂十六旋翼与三层安全防线示意">
+              <defs>
+                <linearGradient id="bodyGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#8fe6f3"/><stop offset="1" stop-color="#2a6cff"/>
+                </linearGradient>
+                <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#20bfd0" stop-opacity="0"/><stop offset="1" stop-color="#7de8f3" stop-opacity=".42"/>
+                </linearGradient>
+              </defs>
+              <circle cx="240" cy="240" r="205" class="radar-ring"/>
+              <circle cx="240" cy="240" r="160" class="radar-ring dashed"/>
+              <circle cx="240" cy="240" r="112" class="radar-ring"/>
+              <circle cx="240" cy="240" r="58" class="radar-ring dashed"/>
+              <g class="radar-sweep">
+                <path d="M240 240 L240 35 A205 205 0 0 1 385 96 Z" fill="url(#sweepGrad)"/>
+                <line x1="240" y1="240" x2="240" y2="35" stroke="#7de8f3" stroke-opacity=".55"/>
+              </g>
+              <g stroke="#8fc6ff" stroke-width="3" stroke-linecap="round" opacity=".95">
+                <g id="arms">
+                  <line x1="240" y1="240" x2="240" y2="122"/>
+                  <g class="rotor"><ellipse cx="240" cy="112" rx="34" ry="7" fill="none"/><ellipse cx="240" cy="106" rx="34" ry="7" fill="none"/></g>
+                </g>
+                <use href="#arms" transform="rotate(45 240 240)"/><use href="#arms" transform="rotate(90 240 240)"/>
+                <use href="#arms" transform="rotate(135 240 240)"/><use href="#arms" transform="rotate(180 240 240)"/>
+                <use href="#arms" transform="rotate(225 240 240)"/><use href="#arms" transform="rotate(270 240 240)"/>
+                <use href="#arms" transform="rotate(315 240 240)"/>
+              </g>
+              <ellipse cx="240" cy="240" rx="72" ry="61" fill="url(#bodyGrad)" opacity=".95"/>
+              <ellipse cx="240" cy="232" rx="47" ry="34" fill="#0b2142" opacity=".65"/>
+              <path d="M205 250 Q240 280 275 250" stroke="#d9f6ff" stroke-width="3" fill="none" opacity=".8"/>
+              <circle cx="240" cy="240" r="4" fill="#fff"/>
+              <text x="240" y="344" text-anchor="middle" fill="#a9c9e8" font-size="12">冗余飞控 · Fail-Safe · 地面干预</text>
+            </svg>
+          </div>
+          <div class="float-label fl-1"><b>10⁻⁹</b> 航空安全目标量级</div>
+          <div class="float-label fl-2"><b>3</b> 套独立飞控系统</div>
+          <div class="float-label fl-3"><b>16</b> 旋翼分布式推进</div>
+        </div>
+      </div>
+      <div class="wrap hero-stats">
+        <div class="hero-stat"><div class="num">10<sup>-9</sup></div><div class="lbl">航空级事故概率目标量级（课程资料）<sup><a href="#src-9">[9]</a></sup></div></div>
+        <div class="hero-stat"><div class="num">500<small>+</small></div><div class="lbl">适航摸底试验科目<sup><a href="#src-3">[3]</a></sup></div></div>
+        <div class="hero-stat"><div class="num">4<small>万+</small></div><div class="lbl">调整试飞架次<sup><a href="#src-3">[3]</a></sup></div></div>
+        <div class="hero-stat"><div class="num">65<small>/450+</small></div><div class="lbl">正式符合性验证大项/科目<sup><a href="#src-3">[3]</a></sup></div></div>
+      </div>
+    </section>
+
+    <section id="summary">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="section-no">01 / EXECUTIVE SUMMARY</div>
+          <h2>四个判断：安全证据很强，<br />但安全论证尚未闭合</h2>
+          <p>课程资料指出，航空级安全要求远高于地面交通：单机事故即重大公共风险，事故概率目标可达 10⁻⁹ 量级；新能源汽车三电技术同源度约 70%，无人机飞控/航电经验迁移率仅约 20%—30%，因此必须按航空适航体系进行系统级重构<sup><a href="#src-9">[9]</a></sup>。</p>
+        </div>
+        <div class="findings">
+          <article class="card finding reveal">
+            <div class="idx">FINDING 01</div>
+            <h3>设计冗余：有硬证据</h3>
+            <p>三套独立飞控、关键系统多重备份、Fail-Safe 实时监测、加密通信与地面干预共同构成防线<sup><a href="#src-1">[1]</a></sup><sup><a href="#src-2">[2]</a></sup>。公开报道称任意 3 个相邻或最多 5 个旋翼停机不影响安全飞行<sup><a href="#src-4">[4]</a></sup>。</p>
+            <div class="verdict"><span class="dot"></span>设计层已体现航空级冗余思想</div>
+          </article>
+          <article class="card finding reveal">
+            <div class="idx">FINDING 02</div>
+            <h3>验证强度：行业罕见</h3>
+            <p>超过 500 科目摸底试验、40,000 余架次调整试飞、65 大项与 450 多个科目的正式符合性验证，覆盖材料、结构、阻燃、坠撞、EMC、数据链与地面站<sup><a href="#src-3">[3]</a></sup><sup><a href="#src-4">[4]</a></sup>。</p>
+            <div class="verdict"><span class="dot"></span>型号设计安全有较充分试验支撑</div>
+          </article>
+          <article class="card finding reveal">
+            <div class="idx">FINDING 03</div>
+            <h3>运行边界：仍被严格限定</h3>
+            <p>首批 OC 为“载人类”而非“客运类”，初期以同点起降观光体验为主；广州、合肥试运行 17 个月，A-to-B 航线仅进入内部试运行<sup><a href="#src-5">[5]</a></sup><sup><a href="#src-6">[6]</a></sup>。</p>
+            <div class="verdict"><span class="dot warn"></span>尚未证明高密度城市通勤安全</div>
+          </article>
+          <article class="card finding reveal">
+            <div class="idx">FINDING 04</div>
+            <h3>证据边界：公开信息不足</h3>
+            <p>公开资料未给出 EH216-S 的失效概率分配、FTA/PSSA 报告、共因失效清单、C2 链路失联统计与第三方风险定量结果；这些是完整安全论证的关键组成<sup><a href="#src-9">[9]</a></sup>。</p>
+            <div class="verdict"><span class="dot risk"></span>不能把“取到证”等同于“风险已公开量化”</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="safetycase">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="section-no">02 / SAFETY ARGUMENT</div>
+          <h2>用 GSN 思路重构 EH216-S 的安全论据</h2>
+          <p>目标（Goal）：在获批运行场景内，EH216-S 对乘员、地面第三方与运营人员的风险可接受。以下五条论证路径基于公开资料构建，属于课程分析模型，不等同于 EHang 或民航局正式提交的 GSN 安全论证。</p>
+        </div>
+        <div class="gsn">
+          <div class="gsn-goal reveal">
+            <div class="eyebrow">GOAL · 顶层安全目标</div>
+            <h3>EH216-S 在限定场景下实现可接受风险</h3>
+            <p>限定场景：广州、合肥 OC 获批区域内的同点起降低空游览与飞行体验；更广泛城市通勤尚未纳入当前证据范围。</p>
+          </div>
+          <div class="gsn-branches">
+            <article class="card branch reveal"><div class="bno">ARGUMENT A</div><h4>设计本质安全</h4><p>以全冗余避免单点故障导致灾难性后果；动力、飞控、能源、通信均有备份。</p><div class="ev"><b>证据：</b>三套飞控与投票机制；最多 5 旋翼停机仍可安全飞行<sup><a href="#src-1">[1]</a></sup><sup><a href="#src-4">[4]</a></sup>。</div></article>
+            <article class="card branch reveal"><div class="bno">ARGUMENT B</div><h4>符合性验证充分</h4><p>通过实验室、地面与飞行试验，覆盖性能、结构、材料、软件、数据链与地面站。</p><div class="ev"><b>证据：</b>500+ 科目、4 万+ 调整试飞、65 大项/450+ 科目<sup><a href="#src-3">[3]</a></sup>。</div></article>
+            <article class="card branch reveal"><div class="bno">ARGUMENT C</div><h4>制造一致性受控</h4><p>PC 表明批量生产质量体系覆盖原材料、供应商、生产过程、出厂测试与售后维修。</p><div class="ev"><b>证据：</b>CAAC 对 19 个系统要素开展文件审查与现场验证<sup><a href="#src-10">[10]</a></sup>。</div></article>
+            <article class="card branch reveal"><div class="bno">ARGUMENT D</div><h4>运行过程可控</h4><p>地面指挥调度、OC 主体资质、人员训练、保险、空域协调与应急处置构成运行防线。</p><div class="ev"><b>证据：</b>广州/合肥 17 个月稳定试运行；近 10 万架次 EH216 系列安全飞行<sup><a href="#src-6">[6]</a></sup>。</div></article>
+            <article class="card branch reveal"><div class="bno">ARGUMENT E</div><h4>持续安全与改进</h4><p>健康监测、Fail-Safe、安全数据回流、监管沙盒与 A-to-B 试点支持迭代。</p><div class="ev"><b>证据：</b>实时健康监测；泰国/中国香港监管沙盒；广州点对点内测<sup><a href="#src-1">[1]</a></sup><sup><a href="#src-6">[6]</a></sup>。</div></article>
+            <article class="card branch reveal"><div class="bno">GAP</div><h4>未闭合的安全论点</h4><p>城市级第三方风险、共因失效概率、网络攻击场景与极端天气边界缺乏公开量化证据。</p><div class="ev"><b>判断：</b>当前论据支持“限定场景安全”，不足以推导“城市通勤已安全”。</div></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="baseline">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="section-no">03 / AIRWORTHINESS BASELINE</div>
+          <h2>适航基线：从“车规级可用”到“航空级可信”</h2>
+          <p>课程资料强调：飞行汽车不能把汽车与无人机成熟经验直接搬到载人航空。技术同源不等于体系等价，必须按适航体系重构可靠性、冗余架构、验证流程与运行管理<sup><a href="#src-9">[9]</a></sup>。</p>
+        </div>
+        <div class="baseline-grid">
+          <div class="card baseline-card reveal">
+            <h3>航空 vs 汽车：安全标准的量级差</h3>
+            <p>第五章第 28 页给出监管逻辑差异。</p>
+            <div class="compare-rows">
+              <div class="compare-row"><div class="k">风险容忍</div><div class="v">航空：单机事故即重大公共风险；汽车：个体事故可统计、可接受。</div></div>
+              <div class="compare-row"><div class="k">安全标准</div><div class="v">航空：事故极小概率（10⁻⁹）；汽车：事故率可统计、可接受。</div></div>
+              <div class="compare-row"><div class="k">审查流程</div><div class="v">航空：事前强约束、全过程审定；汽车：市场准入 + 事后监管。</div></div>
+              <div class="compare-row"><div class="k">技术迁移</div><div class="v">新能源汽车三电约 70% 同源；无人机飞控/航电经验迁移率约 20%—30%，仍需升级至载人航空级。</div></div>
+            </div>
+            <div class="pill-row"><span class="pill">10⁻⁹ 目标量级</span><span class="pill">三重冗余：飞控/能源/通信</span><span class="pill">SSA · FHA · FTA</span></div>
+          </div>
+          <div class="card baseline-card reveal">
+            <h3>EH216-S 专用条件中的安全底线</h3>
+            <p>CAAC 2022 年专用条件为其适航审定提供基础<sup><a href="#src-2">[2]</a></sup>。</p>
+            <div class="big-metric"><strong>3</strong><span>套独立飞控系统，通过传感器与投票机制实现稳定控制</span></div>
+            <div class="compare-rows">
+              <div class="compare-row"><div class="k">乘员</div><div class="v">2 座；无机上驾驶员与操纵装置，地面远程机组可监控与应急指挥。</div></div>
+              <div class="compare-row"><div class="k">动力</div><div class="v">8 对升力/推力部件，共 16 旋翼；纯电驱动。</div></div>
+              <div class="compare-row"><div class="k">包线</div><div class="v">最大速度 130 km/h，航程 30 km，航时 25 min，高度 200 m AGL / 3000 m MSL。</div></div>
+              <div class="compare-row"><div class="k">数据链</div><div class="v">使用商用移动通信网络；既带来部署便利，也引入覆盖、延迟与依赖风险。</div></div>
+            </div>
+            <div class="pill-row"><span class="pill green">专用条件已发布</span><span class="pill amber">完整普适标准仍在建设</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="hazard">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="section-no">04 / HAZARD ANALYSIS</div>
+          <h2>危险分析：把“可能出错的地方”逐层拆开</h2>
+          <p>下表以课程中的 FHA/FTA/STPA/FMEA 思想为框架，结合 EH216-S 公开设计特征进行课程级定性分析。风险等级为课程组研判，不是官方安全评估结果。</p>
+        </div>
+        <div class="card hazard-card reveal">
+          <h3>顶事件：失去可控飞行或危及乘员/第三方</h3>
+          <p>分析方法借鉴第四章的 FTA、CCA、ETA、Bow-Tie、BBN 与 HAZOP/HFACS 等模型<sup><a href="#src-8">[8]</a></sup>，并按第五章 0—8 安全系统工程过程展开<sup><a href="#src-9">[9]</a></sup>。</p>
+          <table>
+            <thead><tr><th>危险 / 失效路径</th><th>主要诱因</th><th>现有安全措施</th><th>残余风险与课程判断</th><th>等级</th></tr></thead>
+            <tbody>
+              <tr><td><strong>旋翼/动力失效</strong></td><td>单桨故障、相邻桨失效、电机或电控异常</td><td>16 旋翼分布式推进；任意 3 个相邻或最多 5 个旋翼停机不影响安全飞行<sup><a href="#src-4">[4]</a></sup>。</td><td>冗余能力强；但共因失效（供电、控制总线、软件）仍需 FTA/CCA 定量支持。</td><td><span class="level low">低-中</span></td></tr>
+              <tr><td><strong>飞控/传感器失效</strong></td><td>飞控故障、传感器误判、软件缺陷</td><td>三套独立飞控与投票机制；多传感器交叉验证<sup><a href="#src-1">[1]</a></sup><sup><a href="#src-2">[2]</a></sup>。</td><td>单点失效可容忍；共因软件缺陷与传感器污染是核心待证问题。</td><td><span class="level mid">中</span></td></tr>
+              <tr><td><strong>C2 数据链中断</strong></td><td>商用移动网络覆盖不足、延迟、拥塞、干扰或攻击</td><td>加密通信与独立密钥；地面站实时监控与应急干预<sup><a href="#src-1">[1]</a></sup><sup><a href="#src-2">[2]</a></sup>。</td><td>专用条件明确采用商用移动通信网络；失联后的自动处置逻辑与统计未公开。</td><td><span class="level high">中-高</span></td></tr>
+              <tr><td><strong>电池热失控 / 充电安全</strong></td><td>电芯缺陷、过充、高温、机械损伤</td><td>智能电池系统；固态电池试验 48 分 10 秒、480 Wh/kg，并经过高温/针刺等测试<sup><a href="#src-7">[7]</a></sup>。</td><td>试验不等于认证装机；充电设施、热管理边界与寿命衰减需运行数据支撑。</td><td><span class="level mid">中</span></td></tr>
+              <tr><td><strong>极端天气 / 低空复杂环境</strong></td><td>雷雨、强风、能见度低、城市微气象</td><td>课程要求验证极端天气鲁棒性<sup><a href="#src-8">[8]</a></sup><sup><a href="#src-9">[9]</a></sup>；25 min 航时限定活动半径。</td><td>短航时限制备降选择；复杂气象与高密度飞行是无人驾驶最主要挑战之一<sup><a href="#src-9">[9]</a></sup>。</td><td><span class="level high">中-高</span></td></tr>
+              <tr><td><strong>地面第三方风险</strong></td><td>起降场周边人员、坠机碎片、噪声与安全间距</td><td>垂直起降减少跑道依赖；OC 限定区域与同点起降；需电子围栏与实时上报<sup><a href="#src-5">[5]</a></sup><sup><a href="#src-9">[9]</a></sup>。</td><td>目前以隔离场景为主；城市高密度运行前仍需第三方风险模型评估。</td><td><span class="level mid">中</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="matrix-grid" style="margin-top:22px;">
+          <div class="card matrix-card reveal">
+            <h3>课程级 5×5 风险矩阵</h3>
+            <p>用于表达“现有措施前后”的风险迁移思路；非 EHang 官方矩阵。</p>
+            <div class="matrix">
+              <div class="axis">严重度<br />/ 可能性</div><div class="axis">1</div><div class="axis">2</div><div class="axis">3</div><div class="axis">4</div><div class="axis">5</div>
+              <div class="axis">5</div><div class="cell mid">M</div><div class="cell high">H</div><div class="cell high">H</div><div class="cell high">H</div><div class="cell high">H</div>
+              <div class="axis">4</div><div class="cell low">L</div><div class="cell mid">M</div><div class="cell high">H</div><div class="cell high">H</div><div class="cell high">H</div>
+              <div class="axis">3</div><div class="cell low">L</div><div class="cell low">L</div><div class="cell mid">M</div><div class="cell mid">M</div><div class="cell high">H</div>
+              <div class="axis">2</div><div class="cell low">L</div><div class="cell low">L</div><div class="cell low">L</div><div class="cell mid">M</div><div class="cell mid">M</div>
+              <div class="axis">1</div><div class="cell low">L</div><div class="cell low">L</div><div class="cell low">L</div><div class="cell low">L</div><div class="cell low">L</div>
+            </div>
+            <div class="matrix-legend"><span><i style="background:#e7f7f1"></i>低</span><span><i style="background:#fff2d9"></i>中</span><span><i style="background:#fdecef"></i>高</span></div>
+          </div>
+          <div class="card matrix-card reveal">
+            <h3>风险迁移示例</h3>
+            <p>同一危险在“无冗余/无运行边界”与“有冗余/有边界”下的课程判断。</p>
+            <div class="matrix-list">
+              <div class="risk-item"><strong>旋翼失效：高 → 低-中</strong><span>16 旋翼与停桨容限是主要降险措施；仍需共因失效分析。</span></div>
+              <div class="risk-item"><strong>飞控失效：高 → 中</strong><span>三套飞控投票降低单点风险；软件共因仍需 FMEA/FTA/STPA。</span></div>
+              <div class="risk-item"><strong>链路中断：中-高 → 中-高</strong><span>加密与地面监控改善防护，但商用网络依赖与失联处置未公开。</span></div>
+              <div class="risk-item"><strong>城市通勤：中 → 高（若放开）</strong><span>当前 A-A 隔离场景不等于 A-B 高密度场景；放开前需第三方风险论证。</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="process">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="section-no">05 / SYSTEMS SAFETY PROCESS</div>
+          <h2>把课程“0—8 九环节”映射到 EH216-S</h2>
+          <p>第五章第 84—87 页提出智能运载工具安全系统工程的基本过程与方法解析：0 安全文化与安全管理，1 整机功能与场景定义，2 安全分析方法，3 系统安全架构，4 硬件安全设计，5 软件安全设计，6 机械/化学/电气安全，7 安全测试验证，8 运行安全论证<sup><a href="#src-9">[9]</a></sup>。</p>
+        </div>
+        <div class="process-grid">
+          <article class="card step reveal"><div class="n">0</div><h4>安全文化与安全管理</h4><p>OC 持有人需具备管理机构、操控人员、管理制度与持续安全运行能力；PC 质量体系覆盖 19 个系统要素<sup><a href="#src-10">[10]</a></sup>。</p><div class="tag">证据：OC + PC</div></article>
+          <article class="card step reveal"><div class="n">1</div><h4>整机功能与场景定义</h4><p>2 名乘员、30 km 航程、25 min 航时；首批运行限定为同点起降观光体验，而非定期客运。</p><div class="tag">证据：专用条件 + OC 解读</div></article>
+          <article class="card step reveal"><div class="n">2</div><h4>安全分析方法</h4><p>课程方法包括 HARA、FHA、STPA、FMEA、FTA、CCA、PSSA、SSA、FMEDA 等；EH216-S 公开资料确认存在 SSA/FHA/FTA 体系要求。</p><div class="tag">缺口：报告未公开</div></article>
+          <article class="card step reveal"><div class="n">3</div><h4>系统安全架构设计</h4><p>三套独立飞控、动力/能源备份、加密通信；课程列举 1oo2、2oo3、1oo2D 等典型架构。</p><div class="tag">证据：三冗余 + 投票机制</div></article>
+          <article class="card step reveal"><div class="n">4</div><h4>硬件安全设计</h4><p>碳纤维机体、雪橇式起落架、阻燃与坠撞验证；专用条件覆盖结构、动力、设备环境。</p><div class="tag">证据：型号合格审定试验</div></article>
+          <article class="card step reveal"><div class="n">5</div><h4>软件 / 智能系统安全</h4><p>预设航线自动驾驶、Fail-Safe 健康监测、地面干预；SOTIF 风险来自感知性能边界与复杂气象。</p><div class="tag">重点：共因与边界</div></article>
+          <article class="card step reveal"><div class="n">6</div><h4>机械 / 化学 / 电气安全</h4><p>课程要求绝缘防护、短路保护、高压互锁、热失控预警；EH216-S 经阻燃、气体毒性、EMC 等验证。</p><div class="tag">证据：符合性验证项目</div></article>
+          <article class="card step reveal"><div class="n">7</div><h4>安全测试验证</h4><p>500+ 摸底科目、4 万+ 调整试飞、65 大项/450+ 正式科目，并有预制缺陷、故障与干扰验证。</p><div class="tag">证据强度：高</div></article>
+          <article class="card step reveal"><div class="n">8</div><h4>运行安全论证</h4><p>17 个月广州/合肥稳定试运行、近 10 万架次系列飞行；A-to-B 仍在内部试运行，城市通勤尚未论证完成。</p><div class="tag">证据强度：中</div></article>
+        </div>
+        <div class="method-strip reveal"><b>方法交叉：</b> airborne 侧可借鉴 FTA、CCA、ETA、Bow-Tie、TOPAZ、BBN；人因侧可借鉴 HAZOP、HEART、TRACER-Lite、HERA、HFACS；自动驾驶侧则引入功能安全 ISO 26262、预期功能安全 ISO 21448、信息安全 ISO/SAE 21434、行为安全与安全论证 GSN<sup><a href="#src-8">[8]</a></sup><sup><a href="#src-9">[9]</a></sup>。对 EH216-S 而言，最有价值的不是套用某一个标准，而是把航空、汽车与无人驾驶三套方法在同一安全论证链中打通。</div>
+      </div>
+    </section>
+
+    <section id="operation">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="section-no">06 / OPERATIONAL SAFETY</div>
+          <h2>运行安全：证照闭环不等于场景无限开放</h2>
+          <p>TC、AC、PC、OC 分别对应设计、单机、制造与运营四个不同环节。理解它们的边界，是判断 EH216-S 安全状态的关键。</p>
+        </div>
+        <div class="timeline">
+          <div class="tl-item reveal"><div class="tl-date">2023.10.13 · TC</div><div class="tl-body"><h3>型号设计通过审定</h3><p>专有条件覆盖飞行性能、结构、设计制造、动力系统、数据链与地面控制站；500+ 科目、4 万+ 调整试飞、65 大项/450+ 正式科目构成设计安全证据<sup><a href="#src-2">[2]</a></sup><sup><a href="#src-3">[3]</a></sup>。</p></div></div>
+          <div class="tl-item reveal"><div class="tl-date">2023.12.21 · AC</div><div class="tl-body"><h3>单机符合批准设计</h3><p>标准适航证意味着具体航空器符合批准型号设计，并交付首批客户；12 月 28 日完成广州、合肥商业飞行演示<sup><a href="#src-3">[3]</a></sup>。</p></div></div>
+          <div class="tl-item reveal"><div class="tl-date">2024.04.07 · PC</div><div class="tl-body"><h3>批量生产质量体系受控</h3><p>PC 要求对组织管理、设计资料、人员资质、供应商、制造过程、检验测试等 19 个要素进行审查，保证持续生产一致性<sup><a href="#src-10">[10]</a></sup>。</p></div></div>
+          <div class="tl-item accent reveal"><div class="tl-date">2025.03.28 · OC</div><div class="tl-body"><h3>运营安全进入受控试点</h3><p>首批 OC 为“载人类”而非“客运类”，初期为同点起降 A-to-A 观光体验；门票通过指定渠道销售，航线为运营商特定使用<sup><a href="#src-5">[5]</a></sup>。</p></div></div>
+          <div class="tl-item reveal"><div class="tl-date">2026 Q2 · 运行证据扩展</div><div class="tl-body"><h3>17 个月试运行 + A-to-B 内部测试</h3><p>广州、合肥两处 OC 场址安全稳定试运行 17 个月；EH216 系列累计近 10 万架次安全飞行、覆盖 23 国；广州总部首条点对点航线进入内部试运行<sup><a href="#src-6">[6]</a></sup>。</p></div></div>
+          <div class="tl-item accent reveal"><div class="tl-date">2026.08 · 节奏回调</div><div class="tl-body"><h3>监管不确定性仍是运行安全变量</h3><p>公司因国内载人商业运营审批不确定性撤回年度收入指引，并推进泰国、中国香港监管沙盒。说明运行安全不仅是技术问题，也是制度与场景问题<sup><a href="#src-6">[6]</a></sup>。</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="recommend">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="section-no">07 / EVIDENCE BOUNDARY &amp; RECOMMENDATIONS</div>
+          <h2>已知、未知，以及下一步该补什么</h2>
+          <p>深度安全分析的价值不在于堆砌“安全”结论，而在于明确哪些证据支持结论、哪些证据仍然缺失。</p>
+        </div>
+        <div class="evidence-grid">
+          <div class="card evidence-card known reveal">
+            <h3>已公开的安全证据</h3>
+            <ul>
+              <li>专用条件明确飞行性能、结构、动力、数据链、地面站等审定基础<sup><a href="#src-2">[2]</a></sup>。</li>
+              <li>500+ 摸底科目、4 万+ 调整试飞、65 大项/450+ 正式符合性验证<sup><a href="#src-3">[3]</a></sup>。</li>
+              <li>三套飞控、多重备份、Fail-Safe、加密通信、地面应急干预<sup><a href="#src-1">[1]</a></sup>。</li>
+              <li>PC 19 要素质量体系与 OC 运营主体安全运行能力要求<sup><a href="#src-10">[10]</a></sup><sup><a href="#src-5">[5]</a></sup>。</li>
+              <li>17 个月本地试运行与近 10 万架次系列飞行记录<sup><a href="#src-6">[6]</a></sup>。</li>
+            </ul>
+          </div>
+          <div class="card evidence-card unknown reveal">
+            <h3>尚未公开的关键证据</h3>
+            <ul>
+              <li>失效概率分配、每飞行小时事故率目标与 10⁻⁹ 指标如何分解到系统。</li>
+              <li>完整 FHA、PSSA、SSA、FTA、CCA 报告及共因失效清单。</li>
+              <li>C2 链路失联率、切换时延、通信覆盖与抗干扰定量数据。</li>
+              <li>固态电池认证装机时间表与量产电池热失控统计数据。</li>
+              <li>城市 A-to-B 高密度场景的第三方风险与空域容量仿真结果。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="rec-grid">
+          <article class="card rec reveal"><div class="rn">REC 01</div><h4>公开概率化安全目标</h4><p>以 10⁻⁹ 为顶层目标，分层发布灾难性/危险性/较大/轻微失效状态的概率分配与符合性方法。</p></article>
+          <article class="card rec reveal"><div class="rn">REC 02</div><h4>补充共因失效分析</h4><p>对三套飞控、16 旋翼供电总线、软件版本与传感器链路执行 CCA/FTA，识别“看似冗余、实则同源”的薄弱环节。</p></article>
+          <article class="card rec reveal"><div class="rn">REC 03</div><h4>强化 C2 链路安全</h4><p>建立多运营商、多频段、多路径切换策略；公开失联后自动悬停、返航或安全着陆的触发逻辑。</p></article>
+          <article class="card rec reveal"><div class="rn">REC 04</div><h4>完善电池全生命周期标准</h4><p>明确热失控预警、充电接口、功率、通信协议、寿命衰减与高温/针刺测试边界。</p></article>
+          <article class="card rec reveal"><div class="rn">REC 05</div><h4>场景化第三方风险评估</h4><p>在 A-to-B 开放前，使用 Bow-Tie、TOPAZ、BBN 等模型评估地面人员、建筑、空域冲突与噪声影响。</p></article>
+          <article class="card rec reveal"><div class="rn">REC 06</div><h4>用数字孪生闭环运行数据</h4><p>将实时健康状态、异常事件、气象与空域数据回流至安全论证，实现“运行安全论证”持续更新。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="verdict">
+      <div class="wrap">
+        <div class="card verdict-block reveal">
+          <div class="eyebrow">08 / COURSE VERDICT</div>
+          <h2>限定场景内，安全证据可接受；<br />城市通勤级安全仍需补证</h2>
+          <p>EH216-S 的安全优势是真实且可验证的：全冗余设计、高强度符合性验证、PC 质量体系与 OC 运行边界共同构成了一条较完整的安全链。但它的公开证据主要支撑“低空观光试点安全”，尚不足以支撑“高密度城市空中出租车已安全”。下一步的关键不是再增加一次飞行表演，而是把概率指标、共因失效、C2 链路与第三方风险以可审计的方式公开。</p>
+          <div class="score-grid">
+            <div class="score"><div class="head"><span>设计安全证据</span><b>4.2 / 5</b></div><div class="bar"><i style="width:84%"></i></div></div>
+            <div class="score"><div class="head"><span>制造一致性</span><b>4.0 / 5</b></div><div class="bar"><i style="width:80%"></i></div></div>
+            <div class="score"><div class="head"><span>运行安全证据</span><b>3.1 / 5</b></div><div class="bar"><i style="width:62%"></i></div></div>
+            <div class="score"><div class="head"><span>城市级安全论证</span><b>2.2 / 5</b></div><div class="bar"><i style="width:44%"></i></div></div>
+          </div>
+          <p style="margin-top:14px;font-size:11px;color:#9fb8da;">评分为课程组基于公开资料的主观研判，不是官方或第三方安全评级。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sources" class="sources">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="section-no">09 / SOURCES</div>
+          <h2>数据来源与口径说明</h2>
+          <p>关键数据来自亿航官网/投资者关系公告、CAAC 专用条件、权威媒体与课程 PDF。检索日期：2026 年 11 月 23 日。</p>
+        </div>
+        <ol class="source-list reveal">
+          <li><a id="src-1" href="https://www.ehang.com/ehang216s/" target="_blank" rel="noopener">EHang 官方 EH216-S 产品页：冗余飞控、Fail-Safe、加密通信、地面干预与基本参数</a></li>
+          <li><a id="src-2" href="https://www.occ.hk/pdf/P020220222611863596239.pdf" target="_blank" rel="noopener">《亿航 EH216-S 型无人驾驶航空器系统专用条件》SC-21-002，2022-02-09</a></li>
+          <li><a id="src-3" href="https://ir.ehang.com/node/9806/html" target="_blank" rel="noopener">EHang IR：TC 公告，含 500+ 科目、4 万+ 调整试飞、65 大项/450+ 正式验证科目</a></li>
+          <li><a id="src-4" href="https://thepaper.cn/newsDetail_forward_24934244" target="_blank" rel="noopener">澎湃新闻：EH216-S 旋翼停转容限、预制缺陷/故障/干扰验证，2023-10-14</a></li>
+          <li><a id="src-5" href="https://www.ehang.com/news/1198.html" target="_blank" rel="noopener">EHang：EH216-S 运营合格证 OC 解读，“载人类”与 A-to-A 运行边界，2025-03-28</a></li>
+          <li><a id="src-6" href="https://ir.ehang.com/node/12861/html" target="_blank" rel="noopener">EHang 2026 年第二季度业绩公告（SEC 6-K）：17 个月试运行、近 10 万架次、A-to-B 内测、监管沙盒</a></li>
+          <li><a id="src-7" href="https://www.ehang.com/news/1136.html" target="_blank" rel="noopener">亿航智能：EH216-S 固态电池 48 分 10 秒飞行测试与 480 Wh/kg 数据，2024-11-13</a></li>
+          <li id="src-8">课程资料《第四章-飞行汽车的现状及展望》：第 37—41 页，飞行汽车安全问题、设计阶段考虑因素、民航/航空航天/自动驾驶安全方法</li>
+          <li id="src-9">课程资料《第五章-飞行汽车产业分析及支撑技术》：第 15、19、28—31、78、84—87 页，10⁻⁹ 目标、三重冗余、技术瓶颈、法规演进、安全系统工程过程与方法</li>
+          <li><a id="src-10" href="https://www.ehang.com/news/1059.html" target="_blank" rel="noopener">亿航智能：全球首张 eVTOL 生产许可证 PC，19 个系统要素质量体系审查，2024-04-07</a></li>
+        </ol>
+        <div class="disclaimer reveal"><b>口径提醒：</b>“近 10 万架次安全飞行”为 EH216 系列口径（含 S/F/L），不是 EH216-S 单型号；10⁻⁹ 是课程资料中的航空安全目标量级，不是 EH216-S 已公开的实测事故率；“安全论证链”、风险矩阵与评分均为课程组基于公开资料构建的分析模型，不代表 EHang、CAAC 或任何第三方机构结论。</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <span>Fundamentals of Flying Vehicle Technology · 课程作业 2</span>
+      <span>主题：亿航 EH216-S 深度安全分析 · 数据截至 2026-11-23 · 第一次作业见 assignment1.html</span>
+    </div>
+  </footer>
+
+  <button class="top-btn" id="topBtn" aria-label="返回顶部">↑</button>
+
+  <script>
+    (function () {
+      var revealEls = document.querySelectorAll('.reveal');
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); }
+          });
+        }, { threshold: 0.12 });
+        revealEls.forEach(function (el) { obs.observe(el); });
+      } else {
+        revealEls.forEach(function (el) { el.classList.add('in'); });
+      }
+      var topBtn = document.getElementById('topBtn');
+      window.addEventListener('scroll', function () {
+        topBtn.classList.toggle('show', window.scrollY > 600);
+      });
+      topBtn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    })();
+  </script>
+</body>
+</html>
